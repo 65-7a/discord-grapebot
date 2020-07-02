@@ -2,6 +2,7 @@ const Discord = require("discord.js");
 const bot = new Discord.Client();
 const fs = require("fs");
 const moment = require("moment");
+const imageapi = require("imageapi.js");
 
 const token = process.argv[2];
 const prefix = "grape!";
@@ -10,8 +11,8 @@ bot.on("ready", () => {
   console.log("Logged in.");
 });
 
-bot.on("message", (message) => {
-  let version = "0.1";
+bot.on("message", async (message) => {
+  let version = "0.2.0";
   let args = message.content.toLowerCase().slice(prefix.length).split(" ");
   let argsOriginalCase = message.content.slice(prefix.length).split(" ");
   bot.user.setActivity("grape!help  |  v" + version, {
@@ -36,15 +37,13 @@ bot.on("message", (message) => {
   if (!userData[message.author.id]) userData[message.author.id] = {};
   if (!userData[message.author.id].money) userData[message.author.id].money = 0;
   if (!userData[message.author.id].lastDaily)
-    userData[message.author.id].lastDaily = "Not Collected";
-  if (!userData[message.author.id].lastWeelky)
-    userData[message.author.id].lastWeekly = "Not Collected";
+    userData[message.author.id].lastDaily = "null";
 
-  if (message.content.startsWith("<@!727417254337183816")) {
-    message.reply(
+  if (message.content.startsWith("<@!727417254337183816>")) {
+    await message.reply(
       "My prefix is `" +
         prefix +
-        "`.\nYou can use `+help` to find the commands."
+        "`.\nYou can use `grape!help` to find a list of commands."
     );
   }
 
@@ -56,7 +55,7 @@ bot.on("message", (message) => {
     case "help":
       switch (args[1]) {
         case "memes":
-          message.channel.send(
+          await message.channel.send(
             embedMessage(
               "Meme Commands",
               "Meme commands for Grape",
@@ -74,7 +73,7 @@ bot.on("message", (message) => {
           );
           break;
         case "currency":
-          message.channel.send(
+          await message.channel.send(
             embedMessage(
               "Currency Commands",
               "Currency commands for Grape",
@@ -86,7 +85,7 @@ bot.on("message", (message) => {
               )
               .addField(
                 "grape!daily",
-                "Claim your daily reward. Aliases: `daily`"
+                "Claim your daily reward. (UTC) Aliases: `daily`"
               )
               .addField(
                 "grape!pay <amount> <target>",
@@ -99,7 +98,7 @@ bot.on("message", (message) => {
           );
           break;
         default:
-          message.channel.send(
+          await message.channel.send(
             embedMessage(
               "Grape",
               "Hello! I am Grape, a bot with a currency and dank memes.\n\nTip: `<>` means required, `[]` means optional.",
@@ -114,64 +113,69 @@ bot.on("message", (message) => {
                 "grape!help currency",
                 "Commands for the Grape Currency System (GCS)."
               )
+              .addField("grape!invite", "Invites you to The Grape Vine.")
           );
           break;
       }
       break;
     case "covidmeme":
-      number = 29;
-      imageNumber = Math.floor(Math.random() * (number - +1)) + 1;
+      let covidMemeImg = await imageapi("coronavirusmemes", true);
       message.channel.send(
-        embedMessage("From Reddit", "", defaultFooter).setImage(
-          "http://callumwong.com/discord-positivebot/covid-memes/" +
-            imageNumber +
-            "%20.jpg"
-        )
+        embedMessage("From r/coronavirusmemes", "", defaultFooter)
+          .setImage(covidMemeImg)
+          .setURL("https://reddit.com/r/coronavirusmemes")
       );
       break;
     case "meme":
-      number = 996;
-      imageNumber = Math.floor(Math.random() * (number - +1)) + 1;
+      let memeImg = await imageapi("memes", true);
       message.channel.send(
-        embedMessage("From Imgur", "", defaultFooter).setImage(
-          "http://callumwong.com/discord-positivebot/imgur-memes/" +
-            imageNumber +
-            "%20.jpg"
-        )
+        embedMessage("From r/memes", "", defaultFooter)
+          .setImage(memeImg)
+          .setURL("https://reddit.com/r/memes")
+      );
+      break;
+    case "invite":
+      await message.author.send(
+        embedMessage(
+          "The Grape Vine",
+          "Join The Grape Vine for special multipliers and bot support!",
+          defaultFooter
+        ).addField("Invite Link", "https://discord.gg/mGgM2F3")
       );
       break;
     case "bal":
     case "money":
     case "balance":
       if (!args[1]) {
-        message.channel.send(
-          embedMessage("Bank", "", defaultFooter).addField(
+        await message.channel.send(
+          embedMessage("Grapes", "", defaultFooter).addField(
             "Balance",
             userData[message.author.id].money + " :grapes:"
           )
         );
       } else {
-        if (!userData[message.mentions.users.first().id]) userData[message.mentions.users.first().id] = {};
+        if (!userData[message.mentions.users.first().id])
+          userData[message.mentions.users.first().id] = {};
         if (!userData[message.mentions.users.first().id].money)
           userData[message.mentions.users.first().id].money = 0;
-        message.channel.send(
+        await message.channel.send(
           embedMessage(
-            message.mentions.users.first().username + "'s Bank",
+            message.mentions.users.first().username + "'s Grapes",
             "",
             defaultFooter
           ).addField(
             "Balance",
-            userData[message.mentions.users.first().id].money + ":grapes:"
+            userData[message.mentions.users.first().id].money + " :grapes:"
           )
         );
       }
       break;
     case "setbal":
       if (message.author.id != "643362491317092372")
-        return message.channel.send("Nice try ;)");
+        return await message.channel.send("Nice try ;)");
 
       if (!args[1] || isNaN(args[1])) {
-        return message.channel.send("Please input a number.");
+        return await message.channel.send("Please input a number.");
       }
 
       let definedUser = "";
@@ -183,7 +187,7 @@ bot.on("message", (message) => {
       } else if (message.mentions.members.first()) {
         definedUser = message.mentions.members.first().id;
         if (message.mentions.members.first().user.bot)
-          return message.channel.send("Cannot set a bot account's balance!");
+          return await message.channel.send("Cannot set a bot account's balance!");
         setbalSuccess =
           "Successfully set <@!" +
           message.mentions.users.first().id +
@@ -191,38 +195,44 @@ bot.on("message", (message) => {
           args[1] +
           " :grapes:";
       } else
-        return message.channel.send(
+        return await message.channel.send(
           "Please mention a user to set the balance of."
         );
 
       userData[definedUser].money = parseInt(args[1]);
-      message.channel.send(setbalSuccess);
+      await message.channel.send(setbalSuccess);
 
       fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
         if (err) console.error(err);
       });
       break;
     case "daily":
-      if (userData[message.author.id].lastDaily != moment().format("L")) {
-        userData[message.author.id].lastDaily = moment().format("L");
+      if (userData[message.author.id].lastDaily >= moment().utc().format("L")) {
+        userData[message.author.id].lastDaily = moment().utc().format("L");
+        let grapeVine = bot.guilds.resolve("727823777790165035");
+        let grapeVineMessage = "";
+        if (grapeVine.member(message.author.id)) {
+          userData[message.author.id].money += 10;
+          grapeVineMessage = " As you are in The Grape Vine, you have collected an extra 10 grapes!";
+        }
         userData[message.author.id].money += 50;
-        message.channel.send(
-          embedMessage(
-            "Daily reward",
-            "50 :grapes: has been added to your account.",
-            defaultFooter
-          ).addField(
-            "New Balance",
-            userData[message.author.id].money + " :grapes:",
-            true
-          )
-        );
+          await message.channel.send(
+            embedMessage(
+              "Daily Reward",
+              "50 :grapes: has been added to your account." + grapeVineMessage,
+              defaultFooter
+            ).addField(
+              "New Balance",
+              userData[message.author.id].money + " :grapes:",
+              true
+            )
+          );
       } else {
-        message.channel.send(
+        await message.channel.send(
           embedMessage(
             "Daily Reward",
             "You have already collected your daily reward! Try again " +
-              moment().endOf("day").fromNow() +
+              moment().utc().endOf("day").fromNow() +
               ".",
             defaultFooter
           )
@@ -261,8 +271,7 @@ bot.on("message", (message) => {
         );
 
       if (!userData[payTarget.id]) userData[payTarget.id] = {};
-      if (!userData[payTarget.id].money)
-        userData[payTarget.id].money = 0;
+      if (!userData[payTarget.id].money) userData[payTarget.id].money = 0;
       userData[payTarget.id].money += parseInt(args[1]);
       userData[message.author.id].money -= args[1];
       message.channel.send(
