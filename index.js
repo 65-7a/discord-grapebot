@@ -36,8 +36,10 @@ bot.on("message", async (message) => {
 
   if (!userData[message.author.id]) userData[message.author.id] = {};
   if (!userData[message.author.id].money) userData[message.author.id].money = 0;
+  if (!userData[message.author.id].redeemedDaily)
+    userData[message.author.id].redeemedDaily = false;
   if (!userData[message.author.id].lastDaily)
-    userData[message.author.id].lastDaily = "null";
+    userData[message.author.id].lastDaily = moment().utc().format();
 
   if (message.content.startsWith("<@!727417254337183816>")) {
     await message.reply(
@@ -187,7 +189,9 @@ bot.on("message", async (message) => {
       } else if (message.mentions.members.first()) {
         definedUser = message.mentions.members.first().id;
         if (message.mentions.members.first().user.bot)
-          return await message.channel.send("Cannot set a bot account's balance!");
+          return await message.channel.send(
+            "Cannot set a bot account's balance!"
+          );
         setbalSuccess =
           "Successfully set <@!" +
           message.mentions.users.first().id +
@@ -207,33 +211,40 @@ bot.on("message", async (message) => {
       });
       break;
     case "daily":
-      if (userData[message.author.id].lastDaily >= moment().utc().format("L")) {
-        userData[message.author.id].lastDaily = moment().utc().format("L");
+      if (!userData[message.author.id].redeemedDaily) {
+        userData[message.author.id].redeemedDaily = true;
+        userData[message.author.id].lastDaily = moment().utc().format();
         let grapeVine = bot.guilds.resolve("727823777790165035");
         let grapeVineMessage = "";
+        let grapeVineFooter =
+          "**Tip:** Join The Grape Vine to get an extra 10 grapes when redeeming your daily reward! `grape!daily`";
         if (grapeVine.member(message.author.id)) {
           userData[message.author.id].money += 10;
-          grapeVineMessage = " As you are in The Grape Vine, you have collected an extra 10 grapes!";
+          grapeVineMessage =
+            " As you are in The Grape Vine, you have collected an extra 10 grapes!";
+          grapeVineFooter = defaultFooter;
         }
         userData[message.author.id].money += 50;
-          await message.channel.send(
-            embedMessage(
-              "Daily Reward",
-              "50 :grapes: has been added to your account." + grapeVineMessage,
-              defaultFooter
-            ).addField(
-              "New Balance",
-              userData[message.author.id].money + " :grapes:",
-              true
-            )
-          );
+        await message.channel.send(
+          embedMessage(
+            "Daily Reward",
+            "50 :grapes: has been added to your account." + grapeVineMessage,
+            grapeVineFooter
+          ).addField(
+            "New Balance",
+            userData[message.author.id].money + " :grapes:",
+            true
+          )
+        );
+        setTimeout(() => {
+          userData[message.author.id].redeemedDaily = false;
+        }, 86400000);
       } else {
         await message.channel.send(
           embedMessage(
             "Daily Reward",
-            "You have already collected your daily reward! Try again " +
-              moment().utc().endOf("day").fromNow() +
-              ".",
+            "You have already collected your daily reward! Try again on " +
+              moment(userData[message.author.id].lastDaily).add(1, "days").format("MMMM Do YYYY, h:mm:ss A") + ".",
             defaultFooter
           )
         );
