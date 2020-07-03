@@ -5,17 +5,37 @@ const moment = require("moment");
 const imageapi = require("imageapi.js");
 
 const token = process.argv[2];
-const prefix = "grape!";
+const prefix = "gr!";
+const pickCooldown = new Set();
 
 bot.on("ready", () => {
   console.log("Logged in.");
 });
 
+moment.updateLocale('en', {
+    relativeTime : {
+        future: "in %s",
+        past:   "%s ago",
+        s  : '%d seconds',
+        ss : '%d seconds',
+        m:  "a minute",
+        mm: "%d minutes",
+        h:  "an hour",
+        hh: "%d hours",
+        d:  "a day",
+        dd: "%d days",
+        w:  "a week",
+        ww: "%d weeks",
+        M:  "a month",
+        MM: "%d months",
+        y:  "a year",
+        yy: "%d years"
+    }
+});
+
 bot.on("message", async (message) => {
-  let version = "0.2.0";
-  let args = message.content.toLowerCase().slice(prefix.length).split(" ");
-  let argsOriginalCase = message.content.slice(prefix.length).split(" ");
-  bot.user.setActivity("grape!help  |  v" + version, {
+  let version = "0.2.1";
+  bot.user.setActivity("gr!help  |  version " + version, {
     url: "http://callumwong.com",
     type: "WATCHING",
   });
@@ -36,22 +56,19 @@ bot.on("message", async (message) => {
 
   if (!userData[message.author.id]) userData[message.author.id] = {};
   if (!userData[message.author.id].money) userData[message.author.id].money = 0;
-  if (!userData[message.author.id].redeemedDaily)
-    userData[message.author.id].redeemedDaily = false;
-  if (!userData[message.author.id].lastDaily)
-    userData[message.author.id].lastDaily = moment().utc().format();
+  if (!userData[message.author.id].lastPicked)
+    userData[message.author.id].lastPicked = "";
 
   if (message.content.startsWith("<@!727417254337183816>")) {
     await message.reply(
       "My prefix is `" +
         prefix +
-        "`.\nYou can use `grape!help` to find a list of commands."
+        "`.\nYou can use `gr!help` to find a list of commands."
     );
   }
 
-  if (!message.content.startsWith(prefix)) {
-    return;
-  }
+  let args = message.content.toLowerCase().slice(prefix.length).split(" ");
+  let argsOriginalCase = message.content.slice(prefix.length).split(" ");
 
   switch (args[0]) {
     case "help":
@@ -67,9 +84,9 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
-              .addField("`grape!meme`", "Sends a meme from Imgur.")
+              .addField("`gr!meme`", "Sends a meme from Imgur.")
               .addField(
-                "`grape!covidmeme`",
+                "`gr!covidmeme`",
                 "Sends a meme about Coronavirus from Reddit."
               )
           );
@@ -85,17 +102,14 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
+              .addField("gr!pick", "Pick some grapes! Cooldown: 20 seconds")
               .addField(
-                "grape!daily",
-                "Claim your daily reward. (UTC) Aliases: `daily`"
+                "gr!give <amount> <target>",
+                "Send grapes to another user. Aliases: `give`, `send`, `pay`"
               )
               .addField(
-                "grape!pay <amount> <target>",
-                "Sends money to another user. Aliases: `pay`, `givemoney`, `sendmoney`"
-              )
-              .addField(
-                "grape!balance [user]",
-                "Checks your balance. Aliases: `balance`, `bal`, `money`"
+                "gr!grapes [user]",
+                "Checks your balance. Aliases: `grapes`, `balance`, `bal`, `money`"
               )
           );
           break;
@@ -110,12 +124,12 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
-              .addField("grape!help memes", "Commands for Memes.")
+              .addField("gr!help memes", "Commands for Memes.")
               .addField(
-                "grape!help currency",
+                "gr!help currency",
                 "Commands for the Grape Currency System (GCS)."
               )
-              .addField("grape!invite", "Invites you to The Grape Vine.")
+              .addField("gr!invite", "Invites you to The Grape Vine.")
           );
           break;
       }
@@ -146,12 +160,13 @@ bot.on("message", async (message) => {
       );
       break;
     case "bal":
+    case "grapes":
     case "money":
     case "balance":
       if (!args[1]) {
         await message.channel.send(
           embedMessage("Grapes", "", defaultFooter).addField(
-            "Balance",
+            "Grapes",
             userData[message.author.id].money + " :grapes:"
           )
         );
@@ -166,69 +181,41 @@ bot.on("message", async (message) => {
             "",
             defaultFooter
           ).addField(
-            "Balance",
+            "Grapes",
             userData[message.mentions.users.first().id].money + " :grapes:"
           )
         );
       }
       break;
-    case "setbal":
-      if (message.author.id != "643362491317092372")
-        return await message.channel.send("Nice try ;)");
-
-      if (!args[1] || isNaN(args[1])) {
-        return await message.channel.send("Please input a number.");
-      }
-
-      let definedUser = "";
-      let setbalSuccess = "";
-      if (!args[2]) {
-        definedUser = message.author.id;
-        setbalSuccess =
-          "Successfully set your balance to " + args[1] + " :grapes:";
-      } else if (message.mentions.members.first()) {
-        definedUser = message.mentions.members.first().id;
-        if (message.mentions.members.first().user.bot)
-          return await message.channel.send(
-            "Cannot set a bot account's balance!"
-          );
-        setbalSuccess =
-          "Successfully set <@!" +
-          message.mentions.users.first().id +
-          ">'s balance to " +
-          args[1] +
-          " :grapes:";
-      } else
-        return await message.channel.send(
-          "Please mention a user to set the balance of."
+    case "pick":
+      if (pickCooldown.has(message.author.id)) {
+        await message.channel.send(
+          embedMessage(
+            "Grape Picking",
+            "This command has a cooldown of 20 seconds!",
+            defaultFooter
+          ).addField("Message", "You to rest before you pick more grapes. Try again " +
+            moment(userData[message.author.id].lastPicked)
+              .add(20, "seconds").fromNow() +
+            ".")
         );
-
-      userData[definedUser].money = parseInt(args[1]);
-      await message.channel.send(setbalSuccess);
-
-      fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
-        if (err) console.error(err);
-      });
-      break;
-    case "daily":
-      if (!userData[message.author.id].redeemedDaily) {
-        userData[message.author.id].redeemedDaily = true;
-        userData[message.author.id].lastDaily = moment().utc().format();
+      } else {
+        userData[message.author.id].lastPicked = moment().format();
         let grapeVine = bot.guilds.resolve("727823777790165035");
         let grapeVineMessage = "";
         let grapeVineFooter =
-          "**Tip:** Join The Grape Vine to get an extra 10 grapes when redeeming your daily reward! `grape!daily`";
+          "**Tip:** Join The Grape Vine to get a 120% multiplier! `gr!invite`";
         if (grapeVine.member(message.author.id)) {
-          userData[message.author.id].money += 10;
+          userData[message.author.id].money += 2;
           grapeVineMessage =
-            " As you are in The Grape Vine, you have collected an extra 10 grapes!";
+            " As you are in The Grape Vine, you have collected an extra 2 grapes!";
           grapeVineFooter = defaultFooter;
         }
-        userData[message.author.id].money += 50;
+        userData[message.author.id].money += 10;
         await message.channel.send(
           embedMessage(
-            "Daily Reward",
-            "50 :grapes: has been added to your account." + grapeVineMessage,
+            "Grape Picking",
+            "You have been given 10 :grapes:." + grapeVineMessage,
             grapeVineFooter
           ).addField(
             "New Balance",
@@ -236,18 +223,10 @@ bot.on("message", async (message) => {
             true
           )
         );
+        pickCooldown.add(message.author.id);
         setTimeout(() => {
-          userData[message.author.id].redeemedDaily = false;
-        }, 86400000);
-      } else {
-        await message.channel.send(
-          embedMessage(
-            "Daily Reward",
-            "You have already collected your daily reward! Try again on " +
-              moment(userData[message.author.id].lastDaily).add(1, "days").format("MMMM Do YYYY, h:mm:ss A") + ".",
-            defaultFooter
-          )
-        );
+          pickCooldown.delete(message.author.id);
+        }, 20000);
       }
 
       fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
@@ -255,18 +234,18 @@ bot.on("message", async (message) => {
       });
       break;
     case "pay":
-    case "sendmoney":
-    case "givemoney":
+    case "send":
+    case "give":
       if (!args[1] | isNaN(args[1]))
         return message.channel.send("Please input a number.");
 
       if (parseInt(args[1]) > userData[message.author.id].money)
-        return message.channel.send("You do not have enough money!");
+        return message.channel.send("You do not have enough grapes!");
 
       let payTarget = "";
       if (!args[2]) {
         return message.channel.send(
-          "Please mention a user to send money to. Usage: .pay <amount> <mention>"
+          "Please mention a user to send money to. Usage: gr!pay <amount> <mention>"
         );
       } else if (message.mentions.members.first()) {
         payTarget = message.mentions.members.first().id;
@@ -274,11 +253,11 @@ bot.on("message", async (message) => {
           return message.channel.send("Cannot pay a bot account!");
         if (payTarget === message.author.id)
           return message.channel.send(
-            "Successfully transferred money from one pocket to another."
+            "Successfully transferred grapes from one pocket to another."
           );
       } else
         return message.channel.send(
-          "Please mention a user to send money to. Usage: .pay <amount> <mention>"
+          "Please mention a user to send money to. Usage: gr!pay <amount> <mention>"
         );
 
       if (!userData[payTarget.id]) userData[payTarget.id] = {};
