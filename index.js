@@ -12,25 +12,25 @@ bot.on("ready", () => {
   console.log("Logged in.");
 });
 
-moment.updateLocale('en', {
-    relativeTime : {
-        future: "in %s",
-        past:   "%s ago",
-        s  : '%d seconds',
-        ss : '%d seconds',
-        m:  "a minute",
-        mm: "%d minutes",
-        h:  "an hour",
-        hh: "%d hours",
-        d:  "a day",
-        dd: "%d days",
-        w:  "a week",
-        ww: "%d weeks",
-        M:  "a month",
-        MM: "%d months",
-        y:  "a year",
-        yy: "%d years"
-    }
+moment.updateLocale("en", {
+  relativeTime: {
+    future: "in %s",
+    past: "%s ago",
+    s: "%d seconds",
+    ss: "%d seconds",
+    m: "a minute",
+    mm: "%d minutes",
+    h: "an hour",
+    hh: "%d hours",
+    d: "a day",
+    dd: "%d days",
+    w: "a week",
+    ww: "%d weeks",
+    M: "a month",
+    MM: "%d months",
+    y: "a year",
+    yy: "%d years",
+  },
 });
 
 bot.on("message", async (message) => {
@@ -58,6 +58,8 @@ bot.on("message", async (message) => {
   if (!userData[message.author.id].money) userData[message.author.id].money = 0;
   if (!userData[message.author.id].lastPicked)
     userData[message.author.id].lastPicked = "";
+  if (!userData[message.author.id].hasFertiliser)
+    userData[message.author.id].hasFertiliser = "false";
 
   if (message.content.startsWith("<@!727417254337183816>")) {
     await message.reply(
@@ -84,10 +86,11 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
-              .addField("`gr!meme`", "Sends a meme from Imgur.")
+              .addField("`gr!meme`", "Sends a meme from Imgur.", true)
               .addField(
                 "`gr!covidmeme`",
-                "Sends a meme about Coronavirus from Reddit."
+                "Sends a meme about Coronavirus from Reddit.",
+                true
               )
           );
           break;
@@ -102,14 +105,26 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
-              .addField("gr!pick", "Pick some grapes! Cooldown: 20 seconds")
+              .addField(
+                "gr!pick",
+                "Pick some grapes! Cooldown: 20 seconds",
+                true
+              )
               .addField(
                 "gr!give <amount> <target>",
-                "Send grapes to another user. Aliases: `give`, `send`, `pay`"
+                "Send grapes to another user. Aliases: `give`, `send`, `pay`",
+                true
               )
               .addField(
                 "gr!grapes [user]",
-                "Checks your balance. Aliases: `grapes`, `balance`, `bal`, `money`"
+                "Checks your (or another user's) balance. Aliases: `grapes`, `balance`, `bal`, `money`",
+                true
+              )
+              .addField("gr!shop", "Shows the grape shop.", true)
+              .addField("gr!buy <item id>", "Buy an item from the shop.", true)
+              .addField(
+                "gr!inventory [user]",
+                "Checks your (or another user's) inventory. Aliases: `inventory`, `inv`, `items`"
               )
           );
           break;
@@ -136,7 +151,7 @@ bot.on("message", async (message) => {
       break;
     case "covidmeme":
       let covidMemeImg = await imageapi("coronavirusmemes", true);
-      message.channel.send(
+      await message.channel.send(
         embedMessage("From r/coronavirusmemes", "", defaultFooter)
           .setImage(covidMemeImg)
           .setURL("https://reddit.com/r/coronavirusmemes")
@@ -144,7 +159,7 @@ bot.on("message", async (message) => {
       break;
     case "meme":
       let memeImg = await imageapi("memes", true);
-      message.channel.send(
+      await message.channel.send(
         embedMessage("From r/memes", "", defaultFooter)
           .setImage(memeImg)
           .setURL("https://reddit.com/r/memes")
@@ -171,6 +186,9 @@ bot.on("message", async (message) => {
           )
         );
       } else {
+        if (!message.mentions.users.first()) {
+          return message.channel.send("Please enter a valid user!");
+        }
         if (!userData[message.mentions.users.first().id])
           userData[message.mentions.users.first().id] = {};
         if (!userData[message.mentions.users.first().id].money)
@@ -194,10 +212,14 @@ bot.on("message", async (message) => {
             "Grape Picking",
             "This command has a cooldown of 20 seconds!",
             defaultFooter
-          ).addField("Message", "You to rest before you pick more grapes. Try again " +
-            moment(userData[message.author.id].lastPicked)
-              .add(20, "seconds").fromNow() +
-            ".")
+          ).addField(
+            "Message",
+            "You to rest before you pick more grapes. Try again " +
+              moment(userData[message.author.id].lastPicked)
+                .add(20, "seconds")
+                .fromNow() +
+              "."
+          )
         );
       } else {
         userData[message.author.id].lastPicked = moment().format();
@@ -228,10 +250,6 @@ bot.on("message", async (message) => {
           pickCooldown.delete(message.author.id);
         }, 20000);
       }
-
-      fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
-        if (err) console.error(err);
-      });
       break;
     case "pay":
     case "send":
@@ -242,14 +260,18 @@ bot.on("message", async (message) => {
       if (parseInt(args[1]) > userData[message.author.id].money)
         return message.channel.send("You do not have enough grapes!");
 
+      if (!message.mentions.users.first()) {
+        return message.channel.send("Please enter a valid user!");
+      }
+
       let payTarget = "";
       if (!args[2]) {
         return message.channel.send(
-          "Please mention a user to send money to. Usage: gr!pay <amount> <mention>"
+          "Please mention a user to send grapes to. Usage: gr!pay <amount> <mention>"
         );
-      } else if (message.mentions.members.first()) {
-        payTarget = message.mentions.members.first().id;
-        if (message.mentions.members.first().user.bot)
+      } else if (message.mentions.users.first()) {
+        payTarget = message.mentions.users.first().id;
+        if (message.mentions.users.first().user.bot)
           return message.channel.send("Cannot pay a bot account!");
         if (payTarget === message.author.id)
           return message.channel.send(
@@ -257,22 +279,113 @@ bot.on("message", async (message) => {
           );
       } else
         return message.channel.send(
-          "Please mention a user to send money to. Usage: gr!pay <amount> <mention>"
+          "Please mention a user to send grapes to. Usage: gr!pay <amount> <mention>"
         );
 
       if (!userData[payTarget.id]) userData[payTarget.id] = {};
       if (!userData[payTarget.id].money) userData[payTarget.id].money = 0;
       userData[payTarget.id].money += parseInt(args[1]);
       userData[message.author.id].money -= args[1];
-      message.channel.send(
+      await message.channel.send(
         "Successfully sent " + args[1] + " :grapes: to <@!" + payTarget + ">."
       );
+      break;
+    case "shop":
+      await message.channel.send(
+        embedMessage(
+          "Grape Shop",
+          "Buy items with grapes!",
+          defaultFooter
+        ).addField(
+          "Fertiliser",
+          "Get an extra 3 grapes when you do `gr!pick`. Cost: `200 Grapes`. ID: `fertiliser`"
+        )
+      );
+      break;
+    case "buy":
+      if (!args[1]) {
+        return message.channel.send("You need to specify something to buy.");
+      }
 
-      fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
-        if (err) console.error(err);
-      });
+      switch (args[1]) {
+        case "fertiliser":
+          if (userData[message.author.id].hasFertiliser == "true") {
+            return message.channel.send(
+              "The maximum count that you can have of this item is: 1"
+            );
+          }
+          if (200 > userData[message.author.id].money) {
+            return message.channel.send("You do not have enough grapes!");
+          }
+          userData[message.author.id].hasFertiliser = "true";
+          userData[message.author.id].money -= 200;
+
+          await message.channel.send(
+            "Successfully bought item with ID: `fertiliser`."
+          );
+          break;
+        default:
+          await message.channel.send("Please enter a valid item ID.");
+      }
+      break;
+    case "items":
+    case "inv":
+    case "inventory":
+      if (!args[1]) {
+        if (!userData[message.author.id].hasFertiliser) {
+          userData[message.author.id].hasFertiliser = "false";
+        }
+
+        if (userData[message.author.id].hasFertiliser == "true") {
+          await message.channel.send(
+            embedMessage(
+              message.author.username + "'s Inventory",
+              "",
+              defaultFooter
+            ).addField("Fertiliser (x1)", "ID: `fertiliser`")
+          );
+        } else {
+          await message.channel.send(
+            embedMessage(
+              message.author.username + "'s Inventory",
+              "No items in inventory!",
+              defaultFooter
+            )
+          );
+        }
+      } else {
+        if (!message.mentions.users.first()) {
+          return message.channel.send("Please enter a valid user!");
+        }
+
+        if (!userData[message.mentions.users.first().id].hasFertiliser) {
+          userData[message.mentions.users.first().id].hasFertiliser = "false";
+        }
+
+        if (userData[message.mentions.users.first().id].hasFertiliser == "true") {
+          await message.channel.send(
+            embedMessage(
+              message.mentions.users.first().username + "'s Inventory",
+              "",
+              defaultFooter
+            ).addField("Fertiliser (x1)", "ID: `fertiliser`")
+          );
+        } else {
+          await message.channel.send(
+            embedMessage(
+              message.mentions.users.first().username + "'s Inventory",
+              "No items in inventory!",
+              defaultFooter
+            )
+          );
+        }
+      }
       break;
   }
+
+  fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+    if (err) console.error(err);
+  });
 });
 
 let userData = JSON.parse(fs.readFileSync("storage/userData.json", "utf8"));
