@@ -1,11 +1,13 @@
 const Discord = require("discord.js");
-const bot = new Discord.Client();
 const fs = require("fs");
 const moment = require("moment");
 const imageapi = require("imageapi.js");
+const config = require("./storage/config.json");
+const bot = new Discord.Client();
 
-const token = process.argv[2];
-const prefix = "gr!";
+const token = config.token;
+const prefix = config.prefix;
+const version = config.prefix;
 const pickCooldown = new Set();
 
 bot.on("ready", () => {
@@ -34,8 +36,7 @@ moment.updateLocale("en", {
 });
 
 bot.on("message", async (message) => {
-  let version = "0.2.1";
-  bot.user.setActivity("gr!help  |  version " + version, {
+  bot.user.setActivity(prefix + "help  |  version " + version, {
     url: "http://callumwong.com",
     type: "WATCHING",
   });
@@ -65,7 +66,7 @@ bot.on("message", async (message) => {
     await message.reply(
       "My prefix is `" +
         prefix +
-        "`.\nYou can use `gr!help` to find a list of commands."
+        "`.\nYou can use `" + prefix + "help` to find a list of commands."
     );
   }
 
@@ -86,9 +87,9 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
-              .addField("`gr!meme`", "Sends a meme from Imgur.", true)
+              .addField(prefix + "meme", "Sends a meme from Imgur.", true)
               .addField(
-                "`gr!covidmeme`",
+                prefix + "covidmeme",
                 "Sends a meme about Coronavirus from Reddit.",
                 true
               )
@@ -106,24 +107,24 @@ bot.on("message", async (message) => {
                 message.author.avatarURL(message.author.id)
               )
               .addField(
-                "gr!pick",
+                prefix + "pick",
                 "Pick some grapes! Cooldown: 20 seconds",
                 true
               )
               .addField(
-                "gr!give <amount> <target>",
+                prefix + "give <amount> <target>",
                 "Send grapes to another user. Aliases: `give`, `send`, `pay`",
                 true
               )
               .addField(
-                "gr!grapes [user]",
+                prefix + "grapes [user]",
                 "Checks your (or another user's) balance. Aliases: `grapes`, `balance`, `bal`, `money`",
                 true
               )
-              .addField("gr!shop", "Shows the grape shop.", true)
-              .addField("gr!buy <item id>", "Buy an item from the shop.", true)
+              .addField(prefix + "shop", "Shows the grape shop.", true)
+              .addField(prefix + "buy <item id>", "Buy an item from the shop.", true)
               .addField(
-                "gr!inventory [user]",
+                prefix + "inventory [user]",
                 "Checks your (or another user's) inventory. Aliases: `inventory`, `inv`, `items`"
               )
           );
@@ -139,12 +140,12 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
-              .addField("gr!help memes", "Commands for Memes.")
+              .addField(prefix + "help memes", "Commands for Memes.")
               .addField(
-                "gr!help currency",
+                prefix + "help currency",
                 "Commands for the Grape Currency System (GCS)."
               )
-              .addField("gr!invite", "Invites you to The Grape Vine.")
+              .addField(prefix + "invite", "Invites you to The Grape Vine.")
           );
           break;
       }
