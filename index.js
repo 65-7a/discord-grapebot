@@ -7,7 +7,7 @@ const bot = new Discord.Client();
 
 const token = config.token;
 const prefix = config.prefix;
-const version = config.prefix;
+const version = config.version;
 const pickCooldown = new Set();
 
 bot.on("ready", () => {
@@ -66,9 +66,13 @@ bot.on("message", async (message) => {
     await message.reply(
       "My prefix is `" +
         prefix +
-        "`.\nYou can use `" + prefix + "help` to find a list of commands."
+        "`.\nYou can use `" +
+        prefix +
+        "help` to find a list of commands."
     );
   }
+
+  if (!message.content.startsWith(prefix)) return;
 
   let args = message.content.toLowerCase().slice(prefix.length).split(" ");
   let argsOriginalCase = message.content.slice(prefix.length).split(" ");
@@ -122,7 +126,11 @@ bot.on("message", async (message) => {
                 true
               )
               .addField(prefix + "shop", "Shows the grape shop.", true)
-              .addField(prefix + "buy <item id>", "Buy an item from the shop.", true)
+              .addField(
+                prefix + "buy <item id>",
+                "Buy an item from the shop.",
+                true
+              )
               .addField(
                 prefix + "inventory [user]",
                 "Checks your (or another user's) inventory. Aliases: `inventory`, `inv`, `items`"
@@ -363,7 +371,9 @@ bot.on("message", async (message) => {
           userData[message.mentions.users.first().id].hasFertiliser = "false";
         }
 
-        if (userData[message.mentions.users.first().id].hasFertiliser == "true") {
+        if (
+          userData[message.mentions.users.first().id].hasFertiliser == "true"
+        ) {
           await message.channel.send(
             embedMessage(
               message.mentions.users.first().username + "'s Inventory",
