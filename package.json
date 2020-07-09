@@ -1,6 +1,6 @@
 {
   "name": "discord-grapebot",
-  "version": "0.3.0",
+  "version": "0.3.2",
   "description": "A Discord bot based on Grapes",
   "main": "index.js",
   "scripts": {

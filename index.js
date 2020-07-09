@@ -5,7 +5,6 @@ const imageapi = require("imageapi.js");
 const config = require("./storage/config.json");
 const bot = new Discord.Client();
 
-const token = config.token;
 const prefix = config.prefix;
 const version = config.version;
 const pickCooldown = new Set();
@@ -36,7 +35,7 @@ moment.updateLocale("en", {
 });
 
 bot.on("message", async (message) => {
-  bot.user.setActivity(prefix + "help  |  version " + version, {
+  bot.user.setActivity(prefix + "help  |  v" + version, {
     url: "http://callumwong.com",
     type: "WATCHING",
   });
@@ -62,7 +61,7 @@ bot.on("message", async (message) => {
   if (!userData[message.author.id].hasFertiliser)
     userData[message.author.id].hasFertiliser = "false";
 
-  if (message.content.startsWith("<@!727417254337183816>")) {
+  if (message.content.startsWith("<@!" + config.id + ">")) {
     await message.reply(
       "My prefix is `" +
         prefix +
@@ -78,6 +77,9 @@ bot.on("message", async (message) => {
   let argsOriginalCase = message.content.slice(prefix.length).split(" ");
 
   switch (args[0]) {
+    case "grape":
+      await message.channel.send("", { files: ["http://callumwong.com/discord-grapebot/icon.png"] });
+      break;
     case "help":
       switch (args[1]) {
         case "memes":
@@ -151,7 +153,7 @@ bot.on("message", async (message) => {
               .addField(prefix + "help memes", "Commands for Memes.")
               .addField(
                 prefix + "help currency",
-                "Commands for the Grape Currency System (GCS)."
+                "Commands for the Grape currency system."
               )
               .addField(prefix + "invite", "Invites you to The Grape Vine.")
           );
@@ -178,7 +180,7 @@ bot.on("message", async (message) => {
       await message.author.send(
         embedMessage(
           "The Grape Vine",
-          "Join The Grape Vine for special multipliers and bot support!",
+          "<:grape:727825674064363622> Join The Grape Vine for special multipliers and bot support! <:grape:727825674064363622>",
           defaultFooter
         ).addField("Invite Link", "https://discord.gg/mGgM2F3")
       );
@@ -189,9 +191,9 @@ bot.on("message", async (message) => {
     case "balance":
       if (!args[1]) {
         await message.channel.send(
-          embedMessage("Grapes", "", defaultFooter).addField(
+          embedMessage("Your Grapes", "", defaultFooter).addField(
             "Grapes",
-            userData[message.author.id].money + " :grapes:"
+            userData[message.author.id].money + " <:grape:727825674064363622>"
           )
         );
       } else {
@@ -209,7 +211,7 @@ bot.on("message", async (message) => {
             defaultFooter
           ).addField(
             "Grapes",
-            userData[message.mentions.users.first().id].money + " :grapes:"
+            userData[message.mentions.users.first().id].money + " <:grape:727825674064363622>"
           )
         );
       }
@@ -224,33 +226,53 @@ bot.on("message", async (message) => {
           ).addField(
             "Message",
             "You to rest before you pick more grapes. Try again " +
-              moment(userData[message.author.id].lastPicked)
-                .add(20, "seconds")
-                .fromNow() +
-              "."
+            moment(userData[message.author.id].lastPicked)
+              .add(20, "seconds")
+              .fromNow() +
+            "."
           )
         );
       } else {
         userData[message.author.id].lastPicked = moment().format();
         let grapeVine = bot.guilds.resolve("727823777790165035");
         let grapeVineMessage = "";
-        let grapeVineFooter =
-          "**Tip:** Join The Grape Vine to get a 120% multiplier! `gr!invite`";
+        let fertiliserMessage = "";
+        let extraFooter = "";
+
+        // Checking if the user has bonuses available
+        if (!grapeVine.member(message.author.id) && userData[message.author.id].hasFertiliser == "false") {
+          random = Math.random;
+          if (random <= 0.5) extraFooter = "Tip: Join The Grape Vine to get an extra 2 grapes! " + prefix + "invite";
+          if (random > 0.5) extraFooter = "Tip: Check out the shop for bonuses when picking grapes! " + prefix + "shop";
+        } else if (!grapeVine.member(message.author.id)) {
+          extraFooter = "Tip: Join The Grape Vine to get an extra 2 grapes! " + prefix + "invite";
+        } else if (userData[message.author.id].hasFertiliser == "false") {
+          extraFooter = "Tip: Check out the shop for bonuses when picking grapes! " + prefix + "shop";
+        }
+        
+        // If user is in The Grape Vine
         if (grapeVine.member(message.author.id)) {
           userData[message.author.id].money += 2;
           grapeVineMessage =
-            " As you are in The Grape Vine, you have collected an extra 2 grapes!";
-          grapeVineFooter = defaultFooter;
+            " As you are in The Grape Vine, you have collected an extra 2<:grape:727825674064363622>!";
+          extraFooter = defaultFooter;
         }
+
+        // If user has fertiliser
+        if (userData[message.author.id].hasFertiliser == "true") {
+          userData[message.author.id].money += 3;
+          fertiliserMessage = " Your fertiliser has also grown you an extra 3<:grape:727825674064363622>!"
+        }
+
         userData[message.author.id].money += 10;
         await message.channel.send(
           embedMessage(
             "Grape Picking",
-            "You have been given 10 :grapes:." + grapeVineMessage,
-            grapeVineFooter
+            "You have been given 10<:grape:727825674064363622>." + grapeVineMessage + fertiliserMessage,
+            extraFooter
           ).addField(
             "New Balance",
-            userData[message.author.id].money + " :grapes:",
+            userData[message.author.id].money + " <:grape:727825674064363622>",
             true
           )
         );
@@ -276,7 +298,7 @@ bot.on("message", async (message) => {
       let payTarget = "";
       if (!args[2]) {
         return message.channel.send(
-          "Please mention a user to send grapes to. Usage: gr!pay <amount> <mention>"
+          "Please mention a user to send grapes to. Usage: " + prefix + "pay <amount> <mention>"
         );
       } else if (message.mentions.users.first()) {
         payTarget = message.mentions.users.first().id;
@@ -288,7 +310,7 @@ bot.on("message", async (message) => {
           );
       } else
         return message.channel.send(
-          "Please mention a user to send grapes to. Usage: gr!pay <amount> <mention>"
+          "Please mention a user to send grapes to. Usage: " + prefix + "pay <amount> <mention>"
         );
 
       if (!userData[payTarget.id]) userData[payTarget.id] = {};
@@ -296,7 +318,7 @@ bot.on("message", async (message) => {
       userData[payTarget.id].money += parseInt(args[1]);
       userData[message.author.id].money -= args[1];
       await message.channel.send(
-        "Successfully sent " + args[1] + " :grapes: to <@!" + payTarget + ">."
+        "Successfully sent " + args[1] + " <:grape:727825674064363622> to <@!" + payTarget + ">."
       );
       break;
     case "shop":
@@ -307,7 +329,7 @@ bot.on("message", async (message) => {
           defaultFooter
         ).addField(
           "Fertiliser",
-          "Get an extra 3 grapes when you do `gr!pick`. Cost: `200 Grapes`. ID: `fertiliser`"
+          "Get an extra 3 grapes when you do `" + prefix + "pick`. Cost: `200 Grapes`. ID: `fertiliser`"
         )
       );
       break;
@@ -392,6 +414,26 @@ bot.on("message", async (message) => {
         }
       }
       break;
+    case "work":
+      break;
+    case "admin":
+      if (message.author.id != 643362491317092372) return await message.channel.send("No.");
+      switch (args[1]) {
+        case "add":
+          if (!args[2] || isNaN(args[2])) return await message.channel.send("Usage: `" + prefix + "admin add <grapes> [user]`");
+          if (!args[3]) {
+            userData[message.author.id].money += parseInt(args[2]);
+            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622> to your account.");
+          } else {
+            if (!message.mentions.users.first()) return await message.channel.send("Usage: `" + prefix + "admin add <grapes> [user]`");
+            userData[message.mentions.users.first().id].money += parseInt(args[2]);
+            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622> to " + message.mentions.users.first().username + "'s account.");
+          }
+          break;
+        default:
+          message.channel.send("<:grape:727825674064363622> Invalid command!");
+      }
+      break;
   }
 
   fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
@@ -401,4 +443,4 @@ bot.on("message", async (message) => {
 
 let userData = JSON.parse(fs.readFileSync("storage/userData.json", "utf8"));
 
-bot.login(token);
+bot.login(config.token);
