@@ -2,12 +2,17 @@ const Discord = require("discord.js");
 const fs = require("fs");
 const moment = require("moment");
 const imageapi = require("imageapi.js");
+const randomWords = require("random-words");
+const mathjs = require("mathjs");
+const wikifakt = require("wikifakt");
+const request = require("request")
 const config = require("./storage/config.json");
 const bot = new Discord.Client();
 
 const prefix = config.prefix;
 const version = config.version;
 const pickCooldown = new Set();
+const workCooldown = new Set();
 
 bot.on("ready", () => {
   console.log("Logged in.");
@@ -34,6 +39,19 @@ moment.updateLocale("en", {
   },
 });
 
+String.prototype.shuffle = function () {
+  var a = this.split(""),
+    n = a.length;
+
+  for (var i = n - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = a[i];
+    a[i] = a[j];
+    a[j] = tmp;
+  }
+  return a.join("");
+}
+
 bot.on("message", async (message) => {
   bot.user.setActivity(prefix + "help  |  v" + version, {
     url: "http://callumwong.com",
@@ -58,16 +76,18 @@ bot.on("message", async (message) => {
   if (!userData[message.author.id].money) userData[message.author.id].money = 0;
   if (!userData[message.author.id].lastPicked)
     userData[message.author.id].lastPicked = "";
+  if (!userData[message.author.id].lastWorked)
+    userData[message.author.id].lastWorked = "";
   if (!userData[message.author.id].hasFertiliser)
     userData[message.author.id].hasFertiliser = "false";
 
   if (message.content.startsWith("<@!" + config.id + ">")) {
     await message.reply(
       "My prefix is `" +
-        prefix +
-        "`.\nYou can use `" +
-        prefix +
-        "help` to find a list of commands."
+      prefix +
+      "`.\nYou can use `" +
+      prefix +
+      "help` to find a list of commands."
     );
   }
 
@@ -75,6 +95,24 @@ bot.on("message", async (message) => {
 
   let args = message.content.toLowerCase().slice(prefix.length).split(" ");
   let argsOriginalCase = message.content.slice(prefix.length).split(" ");
+
+  let random = Math.random;
+
+  function shuffleArray(array) {
+    var currentIndex = array.length, temporaryValue, randomIndex;
+
+    while (0 !== currentIndex) {
+
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex -= 1;
+
+      temporaryValue = array[currentIndex];
+      array[currentIndex] = array[randomIndex];
+      array[randomIndex] = temporaryValue;
+    }
+
+    return array;
+  }
 
   switch (args[0]) {
     case "grape":
@@ -137,6 +175,9 @@ bot.on("message", async (message) => {
                 prefix + "inventory [user]",
                 "Checks your (or another user's) inventory. Aliases: `inventory`, `inv`, `items`"
               )
+              .addField(
+                prefix + "work", "Play a minigame to earn grapes! Cooldown: 20 minutes"
+              )
           );
           break;
         default:
@@ -184,6 +225,13 @@ bot.on("message", async (message) => {
           defaultFooter
         ).addField("Invite Link", "https://discord.gg/mGgM2F3")
       );
+      break;
+    case "fact":
+      await message.channel.send(embedMessage("Loading", "Grabbing your random fact...", defaultFooter)).then((msg) => {
+        wikifakt.getRandomFact().then(function (fact) {
+          msg.edit(embedMessage("Random Fact", fact, defaultFooter));
+        });
+      })
       break;
     case "bal":
     case "grapes":
@@ -241,21 +289,21 @@ bot.on("message", async (message) => {
 
         // Checking if the user has bonuses available
         if (!grapeVine.member(message.author.id) && userData[message.author.id].hasFertiliser == "false") {
-          random = Math.random;
-          if (random <= 0.5) extraFooter = "Tip: Join The Grape Vine to get an extra 2 grapes! " + prefix + "invite";
-          if (random > 0.5) extraFooter = "Tip: Check out the shop for bonuses when picking grapes! " + prefix + "shop";
+          if (random() <= 0.5) extraFooter = "Tip: Join The Grape Vine to get an extra 2 grapes! " + prefix + "invite";
+          if (random() > 0.5) extraFooter = "Tip: Check out the shop for bonuses when picking grapes! " + prefix + "shop";
         } else if (!grapeVine.member(message.author.id)) {
           extraFooter = "Tip: Join The Grape Vine to get an extra 2 grapes! " + prefix + "invite";
         } else if (userData[message.author.id].hasFertiliser == "false") {
           extraFooter = "Tip: Check out the shop for bonuses when picking grapes! " + prefix + "shop";
+        } else {
+          extraFooter = defaultFooter;
         }
-        
+
         // If user is in The Grape Vine
         if (grapeVine.member(message.author.id)) {
           userData[message.author.id].money += 2;
           grapeVineMessage =
             " As you are in The Grape Vine, you have collected an extra 2<:grape:727825674064363622>!";
-          extraFooter = defaultFooter;
         }
 
         // If user has fertiliser
@@ -264,7 +312,7 @@ bot.on("message", async (message) => {
           fertiliserMessage = " Your fertiliser has also grown you an extra 3<:grape:727825674064363622>!"
         }
 
-        userData[message.author.id].money += 10;
+        userData[message.author.id].money += 5;
         await message.channel.send(
           embedMessage(
             "Grape Picking",
@@ -389,13 +437,10 @@ bot.on("message", async (message) => {
           return message.channel.send("Please enter a valid user!");
         }
 
-        if (!userData[message.mentions.users.first().id].hasFertiliser) {
-          userData[message.mentions.users.first().id].hasFertiliser = "false";
-        }
+        if (!userData[message.mentions.users.first().id].money) userData[message.mentions.users.first().id].money = 0;
+        if (!userData[message.mentions.users.first().id].hasFertiliser) userData[message.mentions.users.first().id].hasFertiliser = "false";
 
-        if (
-          userData[message.mentions.users.first().id].hasFertiliser == "true"
-        ) {
+        if (userData[message.mentions.users.first().id].hasFertiliser == "true") {
           await message.channel.send(
             embedMessage(
               message.mentions.users.first().username + "'s Inventory",
@@ -415,19 +460,221 @@ bot.on("message", async (message) => {
       }
       break;
     case "work":
+      if (workCooldown.has(message.author.id)) {
+        await message.channel.send(
+          embedMessage(
+            "Work",
+            "This command has a cooldown of 20 minutes!",
+            defaultFooter
+          ).addField(
+            "Message",
+            "You to rest before you work again. Try again " +
+            moment(userData[message.author.id].lastWorked)
+              .add(20, "minutes")
+              .fromNow() +
+            "."
+          )
+        );
+      } else {
+        userData[message.author.id].lastWorked = moment().format();
+        if (random() <= 0.25) {
+          var randomWord = randomWords();
+          let correct = false;
+          const collected = m => m.content.includes(randomWord);
+          await message.channel.send("The next message will be scrambled. Unscramble the word in 20 seconds to gain 100 grapes!");
+          await message.channel.send("`" + randomWord.shuffle() + "`");
+          const collector = message.channel.createMessageCollector(collected, { time: 20000 });
+          collector.on('collect', m => {
+            message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
+            userData[message.author.id].money += 100;
+            correct = true;
+            collector.stop("");
+            fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+              if (err) console.error(err);
+            });
+          });
+          collector.on('end', ended => {
+            if (correct == false) message.reply("You did not guess the word in time! The word was `" + randomWord + "`.");
+            fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+              if (err) console.error(err);
+            });
+          });
+        } else if (random() <= 0.50) {
+          var TreeNode = function (left, right, operator) {
+            this.left = left;
+            this.right = right;
+            this.operator = operator;
+
+            this.toString = function () {
+              return '(' + left + ' ' + operator + ' ' + right + ')';
+            }
+          }
+
+          function randomNumberRange(min, max) {
+            return Math.floor(Math.random() * (max - min) + min);
+          }
+
+          var operators = ['*', '-', '+'];
+
+          function buildTree(numNodes) {
+            if (numNodes === 1)
+              return randomNumberRange(1, 50);
+
+            var numLeft = Math.floor(numNodes / 2);
+            var leftSubTree = buildTree(numLeft);
+            var numRight = Math.ceil(numNodes / 2);
+            var rightSubTree = buildTree(numRight);
+
+            var num = randomNumberRange(0, operators.length);
+            var str = operators[num];
+            return new TreeNode(leftSubTree, rightSubTree, str);
+          }
+
+          var randomQuestion = buildTree(3).toString();
+          var answer = mathjs.compile(randomQuestion);
+          let correct = false;
+          const collected = m => m.content.includes(answer.evaluate());
+          await message.channel.send("The next message will be a maths equation. Solve the equation in 20 seconds to gain 100 grapes!");
+          await message.channel.send("`" + randomQuestion + "`");
+          const collector = message.channel.createMessageCollector(collected, { time: 20000 });
+          collector.on('collect', m => {
+            message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
+            userData[message.author.id].money += 100;
+            correct = true;
+            collector.stop("");
+            fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+              if (err) console.error(err);
+            });
+          });
+          collector.on('end', ended => {
+            if (correct == false) message.reply("You did not solve the equation in time! The answer was `" + answer.evaluate() + "`.");
+            fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+              if (err) console.error(err);
+            });
+          });
+        } else if (random() <= 0.75) {
+          request({
+            url: "https://opentdb.com/api.php?amount=1&category=15&difficulty=medium&type=multiple",
+            json: true
+          }, async function (error, response, body) {
+            if (!error && response.statusCode === 200) {
+              var answers = [body.results[0].correct_answer].concat(body.results[0].incorrect_answers);
+              shuffleArray(answers);
+              var desc = body.results[0].question + "\n\n__Answers__:\n";
+              var correctAnswer = 0;
+              for (i = 0; i < answers.length; i++) {
+                if (answers[i] == body.results[0].correct_answer) correctAnswer = i + 1;
+                desc = desc.concat((i + 1) + ") " + answers[i] + "\n").replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é");
+              }
+
+              await message.channel.send("The next message will be a quiz about Video Games. React correctly in 20 seconds to gain 100 grapes!");
+              await message.channel.send(embedMessage(body.results[0].category, desc, defaultFooter)).then(async function (msg) {
+                await msg.react('1️⃣');
+                await msg.react('2️⃣');
+                await msg.react('3️⃣');
+                await msg.react('4️⃣');
+                const filter = (reaction, user) => {
+                  return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id === message.author.id;
+                };
+
+                const collector = msg.createReactionCollector(filter, { time: 15000 });
+                let correct = false;
+
+                collector.on('collect', (reaction, user) => {
+                  var response = reaction.emoji.name.replace('1️⃣', "1").replace('2️⃣', "2").replace('3️⃣', "3").replace('4️⃣', "4");
+                  if (response != correctAnswer.toString()) {
+                    return collector.stop("");
+                  }
+                  message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
+                  userData[message.author.id].money += 100;
+                  correct = true;
+                  collector.stop("");
+                  fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+                    if (err) console.error(err);
+                  });
+                });
+
+                collector.on('end', collected => {
+                  if (!correct) message.reply("That wasn't the correct answer! The correct answer was `" + correctAnswer + "`.");
+                  fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+                    if (err) console.error(err);
+                  });
+                });
+              });
+            }
+          })
+        } else {
+          request({
+            url: "https://opentdb.com/api.php?amount=1&category=12&difficulty=medium&type=multiple",
+            json: true
+          }, async function (error, response, body) {
+            if (!error && response.statusCode === 200) {
+              var answers = [body.results[0].correct_answer].concat(body.results[0].incorrect_answers);
+              shuffleArray(answers);
+              var desc = body.results[0].question + "\n\n__Answers__:\n";
+              var correctAnswer = 0;
+              for (i = 0; i < answers.length; i++) {
+                if (answers[i] == body.results[0].correct_answer) correctAnswer = i + 1;
+                desc = desc.concat((i + 1) + ") " + answers[i] + "\n").replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é");
+              }
+
+              await message.channel.send("The next message will be a quiz about Music. React correctly in 20 seconds to gain 100 grapes!");
+              await message.channel.send(embedMessage(body.results[0].category, desc, defaultFooter)).then(async function (msg) {
+                await msg.react('1️⃣');
+                await msg.react('2️⃣');
+                await msg.react('3️⃣');
+                await msg.react('4️⃣');
+                const filter = (reaction, user) => {
+                  return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id === message.author.id;
+                };
+
+                const collector = msg.createReactionCollector(filter, { time: 15000 });
+                let correct = false;
+
+                collector.on('collect', (reaction, user) => {
+                  var response = reaction.emoji.name.replace('1️⃣', "1").replace('2️⃣', "2").replace('3️⃣', "3").replace('4️⃣', "4");
+                  if (response != correctAnswer.toString()) {
+                    return collector.stop("");
+                  }
+                  message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
+                  userData[message.author.id].money += 100;
+                  correct = true;
+                  collector.stop("");
+                  fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+                    if (err) console.error(err);
+                  });
+                });
+
+                collector.on('end', collected => {
+                  if (!correct) message.reply("That wasn't the correct answer! The correct answer was `" + correctAnswer + "`.");
+                  fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+                    if (err) console.error(err);
+                  });
+                });
+              });
+            }
+          })
+        }
+
+        workCooldown.add(message.author.id);
+        setTimeout(() => {
+          workCooldown.delete(message.author.id);
+        }, 1200000);
+      }
       break;
     case "admin":
-      if (message.author.id != 643362491317092372) return await message.channel.send("No.");
+      if (message.author.id != 643362491317092372) return;
       switch (args[1]) {
         case "add":
           if (!args[2] || isNaN(args[2])) return await message.channel.send("Usage: `" + prefix + "admin add <grapes> [user]`");
           if (!args[3]) {
             userData[message.author.id].money += parseInt(args[2]);
-            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622> to your account.");
+            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622>to your account.");
           } else {
             if (!message.mentions.users.first()) return await message.channel.send("Usage: `" + prefix + "admin add <grapes> [user]`");
+            if (!userData[message.mentions.users.first().id].money) userData[message.mentions.users.first().id].money = 0;
             userData[message.mentions.users.first().id].money += parseInt(args[2]);
-            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622> to " + message.mentions.users.first().username + "'s account.");
+            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622>to " + message.mentions.users.first().username + "'s account.");
           }
           break;
         default:

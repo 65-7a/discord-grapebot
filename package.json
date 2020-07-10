@@ -12,6 +12,10 @@
     "discord.js": "^12.2.0",
     "fs": "0.0.1-security",
     "imageapi.js": "^1.0.4",
-    "moment": "^2.27.0"
+    "mathjs": "^7.0.2",
+    "moment": "^2.27.0",
+    "random-words": "^1.1.1",
+    "request": "^2.88.2",
+    "wikifakt": "^1.0.3"
   }
 }
