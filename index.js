@@ -54,8 +54,7 @@ String.prototype.shuffle = function () {
 
 bot.on("message", async (message) => {
   bot.user.setActivity(prefix + "help  |  v" + version, {
-    url: "http://callumwong.com",
-    type: "WATCHING",
+    type: "LISTENING",
   });
 
   const embedMessage = (title, description, footer) => {
@@ -80,6 +79,8 @@ bot.on("message", async (message) => {
     userData[message.author.id].lastWorked = "";
   if (!userData[message.author.id].hasFertiliser)
     userData[message.author.id].hasFertiliser = "false";
+  if (!userData[message.author.id].hasCoffee)
+    userData[message.author.id].hasCoffee = "false";
 
   if (message.content.startsWith("<@!" + config.id + ">")) {
     await message.reply(
@@ -91,6 +92,8 @@ bot.on("message", async (message) => {
     );
   }
 
+  if (message.channel.id == 727825344085753868 || message.channel.id == 727857671339769930 || message.channel.id == 727858074131628073 || message.channel.id == 727858040560287796 || message.channel.id == 730609707689050134) return;
+  if (message.author.bot) return;
   if (!message.content.startsWith(prefix)) return;
 
   let args = message.content.toLowerCase().slice(prefix.length).split(" ");
@@ -252,6 +255,7 @@ bot.on("message", async (message) => {
           userData[message.mentions.users.first().id] = {};
         if (!userData[message.mentions.users.first().id].money)
           userData[message.mentions.users.first().id].money = 0;
+        
         await message.channel.send(
           embedMessage(
             message.mentions.users.first().username + "'s Grapes",
@@ -266,18 +270,19 @@ bot.on("message", async (message) => {
       break;
     case "pick":
       if (pickCooldown.has(message.author.id)) {
+        let coffeeMessage = "";
+        if (userData[message.author.id].hasCoffee) coffeeMessage = " As you have coffee in your inventory, the cooldown has been reduced to 16 seconds."
+        let whenReady = "";
+        if (userData[message.author.id].hasCoffee) { whenReady = moment(userData[message.author.id].lastPicked).add(16, "seconds").fromNow(); }
+        else { whenReady = moment(userData[message.author.id].lastPicked).add(20, "seconds").fromNow(); }
         await message.channel.send(
           embedMessage(
-            "Grape Picking",
-            "This command has a cooldown of 20 seconds!",
+            "Slow Down!",
+            "This command has a cooldown of 20 seconds!" + coffeeMessage,
             defaultFooter
           ).addField(
             "Message",
-            "You to rest before you pick more grapes. Try again " +
-            moment(userData[message.author.id].lastPicked)
-              .add(20, "seconds")
-              .fromNow() +
-            "."
+            "You to rest before you pick more grapes. Try again " + whenReady + "."
           )
         );
       } else {
@@ -316,7 +321,7 @@ bot.on("message", async (message) => {
         await message.channel.send(
           embedMessage(
             "Grape Picking",
-            "You have been given 10<:grape:727825674064363622>." + grapeVineMessage + fertiliserMessage,
+            "You have been given 5<:grape:727825674064363622>." + grapeVineMessage + fertiliserMessage,
             extraFooter
           ).addField(
             "New Balance",
@@ -325,9 +330,15 @@ bot.on("message", async (message) => {
           )
         );
         pickCooldown.add(message.author.id);
-        setTimeout(() => {
-          pickCooldown.delete(message.author.id);
-        }, 20000);
+        if (userData[message.author.id].hasCoffee) {
+          setTimeout(() => {
+            pickCooldown.delete(message.author.id);
+          }, 16000);
+        } else {
+          setTimeout(() => {
+            pickCooldown.delete(message.author.id);
+          }, 20000);
+        }
       }
       break;
     case "pay":
@@ -377,7 +388,10 @@ bot.on("message", async (message) => {
           defaultFooter
         ).addField(
           "Fertiliser",
-          "Get an extra 3 grapes when you do `" + prefix + "pick`. Cost: `200 Grapes`. ID: `fertiliser`"
+          "Get an extra 3 grapes when you do `" + prefix + "pick`. Cost: `200 Grapes` ID: `fertiliser`"
+        ).addField(
+          "Cup of Coffee",
+          "Reduce cooldowns by 20%. Cost: `500 Grapes` ID: `coffee`"
         )
       );
       break;
@@ -403,6 +417,22 @@ bot.on("message", async (message) => {
             "Successfully bought item with ID: `fertiliser`."
           );
           break;
+        case "coffee":
+          if (userData[message.author.id].hasCoffee == "true") {
+            return message.channel.send(
+              "The maximum count that you can have of this item is: 1"
+            );
+          }
+          if (500 > userData[message.author.id].money) {
+            return message.channel.send("You do not have enough grapes!");
+          }
+          userData[message.author.id].hasCoffee = "true";
+          userData[message.author.id].money -= 500;
+
+          await message.channel.send(
+            "Successfully bought item with ID: `coffee`."
+          );
+          break;
         default:
           await message.channel.send("Please enter a valid item ID.");
       }
@@ -411,20 +441,18 @@ bot.on("message", async (message) => {
     case "inv":
     case "inventory":
       if (!args[1]) {
-        if (!userData[message.author.id].hasFertiliser) {
-          userData[message.author.id].hasFertiliser = "false";
-        }
-
+        let invEmbed = embedMessage(
+            message.author.username + "'s Inventory",
+            "",
+            defaultFooter
+        );
+        
         if (userData[message.author.id].hasFertiliser == "true") {
-          await message.channel.send(
-            embedMessage(
-              message.author.username + "'s Inventory",
-              "",
-              defaultFooter
-            ).addField("Fertiliser (x1)", "ID: `fertiliser`")
-          );
+          invEmbed.addField("Fertiliser (x1)", "ID: `fertiliser`");
+        } if (userData[message.author.id].hasCoffee == "true") {
+          invEmbed.addField("Cup of Coffee (x1)", "ID: `coffee`");
         } else {
-          await message.channel.send(
+          return await message.channel.send(
             embedMessage(
               message.author.username + "'s Inventory",
               "No items in inventory!",
@@ -432,6 +460,8 @@ bot.on("message", async (message) => {
             )
           );
         }
+
+        await message.channel.send(invEmbed);
       } else {
         if (!message.mentions.users.first()) {
           return message.channel.send("Please enter a valid user!");
@@ -439,17 +469,20 @@ bot.on("message", async (message) => {
 
         if (!userData[message.mentions.users.first().id].money) userData[message.mentions.users.first().id].money = 0;
         if (!userData[message.mentions.users.first().id].hasFertiliser) userData[message.mentions.users.first().id].hasFertiliser = "false";
+        if (!userData[message.mentions.users.first().id].hasCoffee) userData[message.mentions.users.first().id].hasCoffee = "false";
 
+        let invEmbed = embedMessage(
+            message.mentions.users.first().username + "'s Inventory",
+            "",
+            defaultFooter
+        );
+        
         if (userData[message.mentions.users.first().id].hasFertiliser == "true") {
-          await message.channel.send(
-            embedMessage(
-              message.mentions.users.first().username + "'s Inventory",
-              "",
-              defaultFooter
-            ).addField("Fertiliser (x1)", "ID: `fertiliser`")
-          );
+          invEmbed.addField("Fertiliser (x1)", "ID: `fertiliser`");
+        } if (userData[message.mentions.users.first().id].hasCoffee == "true") {
+          invEmbed.addField("Cup of Coffee (x1)", "ID: `coffee`");
         } else {
-          await message.channel.send(
+          return await message.channel.send(
             embedMessage(
               message.mentions.users.first().username + "'s Inventory",
               "No items in inventory!",
@@ -457,34 +490,38 @@ bot.on("message", async (message) => {
             )
           );
         }
+
+        await message.channel.send(invEmbed);
       }
       break;
     case "work":
       if (workCooldown.has(message.author.id)) {
+        let coffeeMessage = "";
+        if (userData[message.author.id].hasCoffee) coffeeMessage = " As you have coffee in your inventory, the cooldown has been reduced to 16 minutes."
+        let whenReady = "";
+        if (userData[message.author.id].hasCoffee) { whenReady = moment(userData[message.author.id].lastWorked).add(16, "minutes").fromNow(); }
+        else { whenReady = moment(userData[message.author.id].lastWorked).add(20, "minutes").fromNow(); }
         await message.channel.send(
           embedMessage(
             "Work",
-            "This command has a cooldown of 20 minutes!",
+            "This command has a cooldown of 20 minutes!" + coffeeMessage,
             defaultFooter
           ).addField(
             "Message",
-            "You to rest before you work again. Try again " +
-            moment(userData[message.author.id].lastWorked)
-              .add(20, "minutes")
-              .fromNow() +
-            "."
+            "You to rest before you work again. Try again " + whenReady + "."
           )
         );
       } else {
         userData[message.author.id].lastWorked = moment().format();
         if (random() <= 0.25) {
-          var randomWord = randomWords();
+          var randomWord = randomWords({ min: 6, max: 7 });
           let correct = false;
           const collected = m => m.content.includes(randomWord);
           await message.channel.send("The next message will be scrambled. Unscramble the word in 20 seconds to gain 100 grapes!");
           await message.channel.send("`" + randomWord.shuffle() + "`");
           const collector = message.channel.createMessageCollector(collected, { time: 20000 });
           collector.on('collect', m => {
+            if (m.author.id != message.author.id) return;
             message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
             userData[message.author.id].money += 100;
             correct = true;
@@ -538,6 +575,7 @@ bot.on("message", async (message) => {
           await message.channel.send("`" + randomQuestion + "`");
           const collector = message.channel.createMessageCollector(collected, { time: 20000 });
           collector.on('collect', m => {
+            if (m.author.id != message.author.id) return;
             message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
             userData[message.author.id].money += 100;
             correct = true;
@@ -564,11 +602,11 @@ bot.on("message", async (message) => {
               var correctAnswer = 0;
               for (i = 0; i < answers.length; i++) {
                 if (answers[i] == body.results[0].correct_answer) correctAnswer = i + 1;
-                desc = desc.concat((i + 1) + ") " + answers[i] + "\n").replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é");
+                desc = desc.concat((i + 1) + ") " + answers[i] + "\n");
               }
 
               await message.channel.send("The next message will be a quiz about Video Games. React correctly in 20 seconds to gain 100 grapes!");
-              await message.channel.send(embedMessage(body.results[0].category, desc, defaultFooter)).then(async function (msg) {
+              await message.channel.send(embedMessage(body.results[0].category, desc.replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é").replace("&aring;", "å"), defaultFooter)).then(async function (msg) {
                 await msg.react('1️⃣');
                 await msg.react('2️⃣');
                 await msg.react('3️⃣');
@@ -577,7 +615,7 @@ bot.on("message", async (message) => {
                   return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id === message.author.id;
                 };
 
-                const collector = msg.createReactionCollector(filter, { time: 15000 });
+                const collector = msg.createReactionCollector(filter, { time: 20000 });
                 let correct = false;
 
                 collector.on('collect', (reaction, user) => {
@@ -615,11 +653,11 @@ bot.on("message", async (message) => {
               var correctAnswer = 0;
               for (i = 0; i < answers.length; i++) {
                 if (answers[i] == body.results[0].correct_answer) correctAnswer = i + 1;
-                desc = desc.concat((i + 1) + ") " + answers[i] + "\n").replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é");
+                desc = desc.concat((i + 1) + ") " + answers[i] + "\n");
               }
 
               await message.channel.send("The next message will be a quiz about Music. React correctly in 20 seconds to gain 100 grapes!");
-              await message.channel.send(embedMessage(body.results[0].category, desc, defaultFooter)).then(async function (msg) {
+              await message.channel.send(embedMessage(body.results[0].category, desc.replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é").replace("&aring;", "å"), defaultFooter)).then(async function (msg) {
                 await msg.react('1️⃣');
                 await msg.react('2️⃣');
                 await msg.react('3️⃣');
@@ -628,7 +666,7 @@ bot.on("message", async (message) => {
                   return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id === message.author.id;
                 };
 
-                const collector = msg.createReactionCollector(filter, { time: 15000 });
+                const collector = msg.createReactionCollector(filter, { time: 20000 });
                 let correct = false;
 
                 collector.on('collect', (reaction, user) => {
@@ -657,28 +695,40 @@ bot.on("message", async (message) => {
         }
 
         workCooldown.add(message.author.id);
-        setTimeout(() => {
-          workCooldown.delete(message.author.id);
-        }, 1200000);
+        if (userData[message.author.id].hasCoffee) {
+          setTimeout(() => {
+            workCooldown.delete(message.author.id);
+          }, 960000);
+        } else {
+          setTimeout(() => {
+            workCooldown.delete(message.author.id);
+          }, 1200000);
+        }
       }
       break;
     case "admin":
       if (message.author.id != 643362491317092372) return;
       switch (args[1]) {
-        case "add":
+        case "modify":
           if (!args[2] || isNaN(args[2])) return await message.channel.send("Usage: `" + prefix + "admin add <grapes> [user]`");
           if (!args[3]) {
             userData[message.author.id].money += parseInt(args[2]);
-            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622>to your account.");
+            if (parseInt(args[2]) < 0)
+              await message.channel.send("Removed " + args[2].substring(1) + "<:grape:727825674064363622>from your account.");
+            else
+              await message.channel.send("Added " + args[2] + "<:grape:727825674064363622>to your account.");
           } else {
             if (!message.mentions.users.first()) return await message.channel.send("Usage: `" + prefix + "admin add <grapes> [user]`");
             if (!userData[message.mentions.users.first().id].money) userData[message.mentions.users.first().id].money = 0;
             userData[message.mentions.users.first().id].money += parseInt(args[2]);
-            await message.channel.send("Added " + args[2] + "<:grape:727825674064363622>to " + message.mentions.users.first().username + "'s account.");
+            if (parseInt(args[2]) < 0)
+              await message.channel.send("Removed " + args[2].substring(1) + "<:grape:727825674064363622>from " + message.mentions.users.first().username + "'s account.");
+            else
+              await message.channel.send("Added " + args[2] + "<:grape:727825674064363622>to " + message.mentions.users.first().username + "'s account.");
           }
           break;
         default:
-          message.channel.send("<:grape:727825674064363622> Invalid command!");
+          await message.channel.send("<:grape:727825674064363622> Invalid command!");
       }
       break;
   }
