@@ -39,8 +39,8 @@ moment.updateLocale("en", {
   },
 });
 
-String.prototype.shuffle = function () {
-  var a = this.split(""),
+function shuffleString(thing) {
+  var a = thing.split(""),
     n = a.length;
 
   for (var i = n - 1; i > 0; i--) {
@@ -518,10 +518,9 @@ bot.on("message", async (message) => {
           let correct = false;
           const collected = m => m.content.includes(randomWord);
           await message.channel.send("The next message will be scrambled. Unscramble the word in 20 seconds to gain 100 grapes!");
-          await message.channel.send("`" + randomWord.shuffle() + "`");
+          await message.channel.send("`" + shuffleString(randomWord) + "`");
           const collector = message.channel.createMessageCollector(collected, { time: 20000 });
           collector.on('collect', m => {
-            if (m.author.id != message.author.id) return;
             message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
             userData[message.author.id].money += 100;
             correct = true;
@@ -612,13 +611,14 @@ bot.on("message", async (message) => {
                 await msg.react('3️⃣');
                 await msg.react('4️⃣');
                 const filter = (reaction, user) => {
-                  return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id === message.author.id;
+                  return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id == message.author.id;
                 };
 
                 const collector = msg.createReactionCollector(filter, { time: 20000 });
                 let correct = false;
 
                 collector.on('collect', (reaction, user) => {
+                  if (!reaction.users.resolve(message.author.id)) return;
                   var response = reaction.emoji.name.replace('1️⃣', "1").replace('2️⃣', "2").replace('3️⃣', "3").replace('4️⃣', "4");
                   if (response != correctAnswer.toString()) {
                     return collector.stop("");
@@ -663,17 +663,16 @@ bot.on("message", async (message) => {
                 await msg.react('3️⃣');
                 await msg.react('4️⃣');
                 const filter = (reaction, user) => {
-                  return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id === message.author.id;
+                  return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id == message.author.id;
                 };
 
                 const collector = msg.createReactionCollector(filter, { time: 20000 });
                 let correct = false;
 
                 collector.on('collect', (reaction, user) => {
+                  if (!reaction.users.resolve(message.author.id)) return;
                   var response = reaction.emoji.name.replace('1️⃣', "1").replace('2️⃣', "2").replace('3️⃣', "3").replace('4️⃣', "4");
-                  if (response != correctAnswer.toString()) {
-                    return collector.stop("");
-                  }
+                  if (response != correctAnswer.toString()) { return collector.stop(""); }
                   message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
                   userData[message.author.id].money += 100;
                   correct = true;
