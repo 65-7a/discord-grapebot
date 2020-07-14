@@ -5,7 +5,7 @@ const imageapi = require("imageapi.js");
 const randomWords = require("random-words");
 const mathjs = require("mathjs");
 const wikifakt = require("wikifakt");
-const request = require("request")
+const request = require("request");
 const config = require("./storage/config.json");
 const bot = new Discord.Client();
 
@@ -38,19 +38,6 @@ moment.updateLocale("en", {
     yy: "%d years",
   },
 });
-
-function shuffleString(thing) {
-  var a = thing.split(""),
-    n = a.length;
-
-  for (var i = n - 1; i > 0; i--) {
-    var j = Math.floor(Math.random() * (i + 1));
-    var tmp = a[i];
-    a[i] = a[j];
-    a[j] = tmp;
-  }
-  return a.join("");
-}
 
 bot.on("message", async (message) => {
   bot.user.setActivity(prefix + "help  |  v" + version, {
@@ -231,7 +218,7 @@ bot.on("message", async (message) => {
       break;
     case "fact":
       await message.channel.send(embedMessage("Loading", "Grabbing your random fact...", defaultFooter)).then((msg) => {
-        wikifakt.getRandomFact().then(function (fact) {
+        wikifakt.getRandomFact().then((fact) => {
           msg.edit(embedMessage("Random Fact", fact, defaultFooter));
         });
       })
@@ -255,7 +242,7 @@ bot.on("message", async (message) => {
           userData[message.mentions.users.first().id] = {};
         if (!userData[message.mentions.users.first().id].money)
           userData[message.mentions.users.first().id].money = 0;
-        
+
         await message.channel.send(
           embedMessage(
             message.mentions.users.first().username + "'s Grapes",
@@ -442,11 +429,11 @@ bot.on("message", async (message) => {
     case "inventory":
       if (!args[1]) {
         let invEmbed = embedMessage(
-            message.author.username + "'s Inventory",
-            "",
-            defaultFooter
+          message.author.username + "'s Inventory",
+          "",
+          defaultFooter
         );
-        
+
         if (userData[message.author.id].hasFertiliser == "true") {
           invEmbed.addField("Fertiliser (x1)", "ID: `fertiliser`");
         } if (userData[message.author.id].hasCoffee == "true") {
@@ -472,11 +459,11 @@ bot.on("message", async (message) => {
         if (!userData[message.mentions.users.first().id].hasCoffee) userData[message.mentions.users.first().id].hasCoffee = "false";
 
         let invEmbed = embedMessage(
-            message.mentions.users.first().username + "'s Inventory",
-            "",
-            defaultFooter
+          message.mentions.users.first().username + "'s Inventory",
+          "",
+          defaultFooter
         );
-        
+
         if (userData[message.mentions.users.first().id].hasFertiliser == "true") {
           invEmbed.addField("Fertiliser (x1)", "ID: `fertiliser`");
         } if (userData[message.mentions.users.first().id].hasCoffee == "true") {
@@ -514,11 +501,12 @@ bot.on("message", async (message) => {
       } else {
         userData[message.author.id].lastWorked = moment().format();
         if (random() <= 0.25) {
-          var randomWord = randomWords({ min: 6, max: 7 });
+          var randomWord = randomWords() + '';
           let correct = false;
           const collected = m => m.content.includes(randomWord);
+          var shuffled = randomWord.split('').sort(function(){return 0.5-Math.random()}).join('');
           await message.channel.send("The next message will be scrambled. Unscramble the word in 20 seconds to gain 100 grapes!");
-          await message.channel.send("`" + shuffleString(randomWord) + "`");
+          await message.channel.send("`" + shuffled + "`");
           const collector = message.channel.createMessageCollector(collected, { time: 20000 });
           collector.on('collect', m => {
             message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
@@ -605,11 +593,11 @@ bot.on("message", async (message) => {
               }
 
               await message.channel.send("The next message will be a quiz about Video Games. React correctly in 20 seconds to gain 100 grapes!");
-              await message.channel.send(embedMessage(body.results[0].category, desc.replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é").replace("&aring;", "å"), defaultFooter)).then(async function (msg) {
-                await msg.react('1️⃣');
-                await msg.react('2️⃣');
-                await msg.react('3️⃣');
-                await msg.react('4️⃣');
+              await message.channel.send(embedMessage(body.results[0].category, desc.replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é").replace("&aring;", "å"), defaultFooter)).then((msg) => {
+                msg.react('1️⃣');
+                msg.react('2️⃣');
+                msg.react('3️⃣');
+                msg.react('4️⃣');
                 const filter = (reaction, user) => {
                   return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id == message.author.id;
                 };
@@ -657,38 +645,40 @@ bot.on("message", async (message) => {
               }
 
               await message.channel.send("The next message will be a quiz about Music. React correctly in 20 seconds to gain 100 grapes!");
-              await message.channel.send(embedMessage(body.results[0].category, desc.replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é").replace("&aring;", "å"), defaultFooter)).then(async function (msg) {
-                await msg.react('1️⃣');
-                await msg.react('2️⃣');
-                await msg.react('3️⃣');
-                await msg.react('4️⃣');
-                const filter = (reaction, user) => {
-                  return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id == message.author.id;
-                };
+              await message.channel.send(embedMessage(body.results[0].category,
+                desc.replace("&quot;", "\"").replace("&#039;", "'").replace("&eacute;", "é")
+                  .replace("&aring;", "å"), defaultFooter)).then((msg) => {
+                    msg.react('1️⃣');
+                    msg.react('2️⃣');
+                    msg.react('3️⃣');
+                    msg.react('4️⃣');
+                    const filter = (reaction, user) => {
+                      return reaction.emoji.name == '1️⃣' || reaction.emoji.name == '2️⃣' || reaction.emoji.name == '3️⃣' || reaction.emoji.name == '4️⃣' && user.id == message.author.id;
+                    };
 
-                const collector = msg.createReactionCollector(filter, { time: 20000 });
-                let correct = false;
+                    const collector = msg.createReactionCollector(filter, { time: 20000 });
+                    let correct = false;
 
-                collector.on('collect', (reaction, user) => {
-                  if (!reaction.users.resolve(message.author.id)) return;
-                  var response = reaction.emoji.name.replace('1️⃣', "1").replace('2️⃣', "2").replace('3️⃣', "3").replace('4️⃣', "4");
-                  if (response != correctAnswer.toString()) { return collector.stop(""); }
-                  message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
-                  userData[message.author.id].money += 100;
-                  correct = true;
-                  collector.stop("");
-                  fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
-                    if (err) console.error(err);
+                    collector.on('collect', (reaction, user) => {
+                      if (!reaction.users.resolve(message.author.id)) return;
+                      var response = reaction.emoji.name.replace('1️⃣', "1").replace('2️⃣', "2").replace('3️⃣', "3").replace('4️⃣', "4");
+                      if (response != correctAnswer.toString()) { return collector.stop(""); }
+                      message.reply("You are correct! 100<:grape:727825674064363622>has been added to your account.");
+                      userData[message.author.id].money += 100;
+                      correct = true;
+                      collector.stop("");
+                      fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+                        if (err) console.error(err);
+                      });
+                    });
+
+                    collector.on('end', collected => {
+                      if (!correct) message.reply("That wasn't the correct answer! The correct answer was `" + correctAnswer + "`.");
+                      fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
+                        if (err) console.error(err);
+                      });
+                    });
                   });
-                });
-
-                collector.on('end', collected => {
-                  if (!correct) message.reply("That wasn't the correct answer! The correct answer was `" + correctAnswer + "`.");
-                  fs.writeFile("storage/userData.json", JSON.stringify(userData), (err) => {
-                    if (err) console.error(err);
-                  });
-                });
-              });
             }
           })
         }
