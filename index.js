@@ -258,9 +258,9 @@ bot.on("message", async (message) => {
     case "pick":
       if (pickCooldown.has(message.author.id)) {
         let coffeeMessage = "";
-        if (userData[message.author.id].hasCoffee) coffeeMessage = " As you have coffee in your inventory, the cooldown has been reduced to 16 seconds."
+        if (userData[message.author.id].hasCoffee == "true") coffeeMessage = " As you have coffee in your inventory, the cooldown has been reduced to 16 seconds."
         let whenReady = "";
-        if (userData[message.author.id].hasCoffee) { whenReady = moment(userData[message.author.id].lastPicked).add(16, "seconds").fromNow(); }
+        if (userData[message.author.id].hasCoffee == "true") { whenReady = moment(userData[message.author.id].lastPicked).add(16, "seconds").fromNow(); }
         else { whenReady = moment(userData[message.author.id].lastPicked).add(20, "seconds").fromNow(); }
         await message.channel.send(
           embedMessage(
