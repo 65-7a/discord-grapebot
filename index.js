@@ -106,7 +106,9 @@ bot.on("message", async (message) => {
 
   switch (args[0]) {
     case "grape":
+      if (!message.deletable) return;
       await message.channel.send("", { files: ["http://callumwong.com/discord-grapebot/icon.png"] });
+      await message.delete();
       break;
     case "help":
       switch (args[1]) {
@@ -121,14 +123,30 @@ bot.on("message", async (message) => {
                 message.author.username,
                 message.author.avatarURL(message.author.id)
               )
-              .addField(prefix + "meme", "Sends a meme from Imgur.", true)
+              .addField(prefix + "meme", "Sends a meme from Reddit.", true)
               .addField(
                 prefix + "covidmeme",
                 "Sends a meme about Coronavirus from Reddit.",
                 true
               )
+              .addField(
+                prefix + "mcmeme",
+                "Send a Minecraft meme from Reddit.",
+                true
+              )
           );
           break;
+        case "other":
+          await message.channel.send(
+            embedMessage(
+              "Miscellaneous Commands",
+              "Commands for Grape that don't fit anywhere else",
+              defaultFooter
+            )
+              .setAuthor(message.author.username, message.author.avatarURL(message.author.id))
+              .addField(prefix + "grape", "Sends an image of the Grape icon.", true)
+              .addField(prefix + "fact", "Sends a random")
+          )
         case "currency":
           await message.channel.send(
             embedMessage(
@@ -186,6 +204,7 @@ bot.on("message", async (message) => {
                 prefix + "help currency",
                 "Commands for the Grape currency system."
               )
+              .addField(prefix + "help other", "Other commands that don't fit anywhere else.")
               .addField(prefix + "invite", "Invites you to The Grape Vine.")
           );
           break;
@@ -199,6 +218,14 @@ bot.on("message", async (message) => {
           .setURL("https://reddit.com/r/coronavirusmemes")
       );
       break;
+    case "mcmeme":
+      let mcMemeImg = await imageapi("minecraftmemes", true);
+      await message.channel.send(
+        embedMessage("From r/coronavirusmemes", "", defaultFooter)
+          .setImage(mcMemeImg)
+          .setURL("https://reddit.com/r/minecraftmemes")
+      );
+      break;
     case "meme":
       let memeImg = await imageapi("memes", true);
       await message.channel.send(
@@ -210,11 +237,12 @@ bot.on("message", async (message) => {
     case "invite":
       await message.author.send(
         embedMessage(
-          "The Grape Vine",
-          "<:grape:727825674064363622> Join The Grape Vine for special multipliers and bot support! <:grape:727825674064363622>",
+          "Invite Grape to your server!",
+          "<:grape:727825674064363622> https://discord.com/oauth2/authorize?client_id=727417254337183816&permissions=2147483647&scope=bot <:grape:727825674064363622>",
           defaultFooter
-        ).addField("Invite Link", "https://discord.gg/mGgM2F3")
+        )
       );
+      await message.react('✅');
       break;
     case "fact":
       await message.channel.send(embedMessage("Loading", "Grabbing your random fact...", defaultFooter)).then((msg) => {
@@ -379,6 +407,15 @@ bot.on("message", async (message) => {
         ).addField(
           "Cup of Coffee",
           "Reduce cooldowns by 20%. Cost: `500 Grapes` ID: `coffee`"
+        ).addField(
+          "Grape Jam",
+          ""
+        ).addField(
+          "Wine",
+          "Give"
+        ).addField(
+          "Grape Candy",
+          "Collectible. Cost: `200 Grapes` ID: `candy`"
         )
       );
       break;
