@@ -146,7 +146,8 @@ bot.on("message", async (message) => {
               .setAuthor(message.author.username, message.author.avatarURL(message.author.id))
               .addField(prefix + "grape", "Sends an image of the Grape icon.", true)
               .addField(prefix + "fact", "Sends a random")
-          )
+          );
+          break;
         case "currency":
           await message.channel.send(
             embedMessage(
