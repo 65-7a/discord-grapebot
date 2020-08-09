@@ -408,15 +408,6 @@ bot.on("message", async (message) => {
         ).addField(
           "Cup of Coffee",
           "Reduce cooldowns by 20%. Cost: `500 Grapes` ID: `coffee`"
-        ).addField(
-          "Grape Jam",
-          ""
-        ).addField(
-          "Wine",
-          "Give"
-        ).addField(
-          "Grape Candy",
-          "Collectible. Cost: `200 Grapes` ID: `candy`"
         )
       );
       break;
